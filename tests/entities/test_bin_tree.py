@@ -1,3 +1,4 @@
+from typing import Any
 from algogears.core import BinTree, BinTreeNode
 
 
@@ -12,14 +13,12 @@ def test_bin_tree_height():
 
 
 class MockNode(BinTreeNode):
-    def __init__(self, data, field, left=None, right=None, height=0):
-        super().__init__(data, left, right, height)
-        self.field = field
+    field: Any
 
 
 def test_bin_tree_node_copy_contents_without_children():
-    root1 = MockNode("R1_2", 12, left=MockNode("R1_1", 11), right=MockNode("R1_3", 13))
-    root2 = MockNode("R2_2", 22, left=MockNode("R2_1", 21), right=MockNode("R2_3", 23))
+    root1 = MockNode(data="R1_2", field=12, left=MockNode(data="R1_1", field=11), right=MockNode(data="R1_3", field=13))
+    root2 = MockNode(data="R2_2", field=22, left=MockNode(data="R2_1", field=21), right=MockNode(data="R2_3", field=23))
     MockNode.copy_contents_without_children(root1, root2)
 
     assert root2.data == "R1_2" and root2.field == 12
@@ -28,7 +27,7 @@ def test_bin_tree_node_copy_contents_without_children():
 
 
 def test_bin_tree_node_copy_contents_without_children_same_node():
-    root1 = MockNode("R1_2", 12, left=MockNode("R1_1", 11), right=MockNode("R1_3", 13))
+    root1 = MockNode(data="R1_2", field=12, left=MockNode(data="R1_1", field=11), right=MockNode(data="R1_3", field=13))
     MockNode.copy_contents_without_children(root1, root1)
 
     assert root1.data == "R1_2" and root1.field == 12
