@@ -1,3 +1,4 @@
+from typing import Any, Callable, ClassVar, Iterable
 from .core import Line2D, BinTreeNode, BinTree, Point
 
 
@@ -6,12 +7,11 @@ sort_right_to_left = lambda p: (-p.x, p.y)
 
 
 class QuickhullNode(BinTreeNode):
-    def __init__(self, data, left=None, right=None, h=None, subhull=None):
-        super().__init__(data, left, right)
-        self.h = h
-        self.subhull = subhull
+    data: list[Point]
+    h: Point | None = None
+    subhull: list[Point] | None = None
 
-    def weak_equal(self, other):
+    def weak_equal(self, other: Any) -> bool:
         return (
             super().weak_equal(other)
             and self.h == other.h
@@ -19,31 +19,31 @@ class QuickhullNode(BinTreeNode):
         )
 
     @property
-    def points(self):
+    def points(self) -> list[Point]:
         return self.data
     
     @points.setter
-    def points(self, value):
+    def points(self, value: list[Point]) -> None:
         self.data = value
     
     @points.deleter
-    def points(self):
+    def points(self) -> None:
         del self.data
 
 
 class QuickhullTree(BinTree):
-    node_class = QuickhullNode
+    node_class: ClassVar[type] = QuickhullNode
 
 
-def quickhull(points):
+def quickhull(points: Iterable[Point]):
     leftmost_point = min(points, key=lambda p: p.coords)
     rightmost_point = max(points, key=lambda p: p.coords)
 
     subset1 = make_subset(points, leftmost_point, rightmost_point, sort_key=sort_left_to_right)
     subset2 = make_subset(points, rightmost_point, leftmost_point, sort_key=sort_right_to_left)
 
-    tree = QuickhullTree(QuickhullNode(subset1 + subset2[1:-1]))
-    tree.root.left, tree.root.right = QuickhullNode(subset1), QuickhullNode(subset2)
+    tree = QuickhullTree(root=QuickhullNode(data=(subset1 + subset2[1:-1])))
+    tree.root.left, tree.root.right = QuickhullNode(data=subset1), QuickhullNode(data=subset2)
 
     hull = (
         partition(subset1, leftmost_point, rightmost_point, tree.root.left) +
@@ -60,29 +60,29 @@ def quickhull(points):
     yield hull
 
 
-def partition(points, left, right, node):
+def partition(points: Iterable[Point], left_point: Point, right_point: Point, node: QuickhullNode) -> list[Point]:
     if len(points) == 2:
-        node.subhull = [left, right]
+        node.subhull = [left_point, right_point]
         return node.subhull
 
-    lr_line = Line2D(left, right)
-    pts = filter(lambda p: p != left and p != right, points)
+    lr_line = Line2D(point1=left_point, point2=right_point)
+    pts = filter(lambda p: p != left_point and p != right_point, points)
 
-    h = max(pts, key=lambda p: (Point.dist(p, lr_line), Point.angle(left, p, right)))
-    s1 = left_points(points, left, h)
-    s2 = left_points(points, h, right)
+    h = max(pts, key=lambda p: (Point.dist(p, lr_line), Point.angle(left_point, p, right_point)))
+    s1 = left_points(points, left_point, h)
+    s2 = left_points(points, h, right_point)
 
-    node.h, node.left, node.right = h, QuickhullNode(s1), QuickhullNode(s2)
-    node.subhull = partition(s1, left, h, node.left) + partition(s2, h, right, node.right)[1:]
+    node.h, node.left, node.right = h, QuickhullNode(data=s1), QuickhullNode(data=s2)
+    node.subhull = partition(s1, left_point, h, node.left) + partition(s2, h, right_point, node.right)[1:]
     
     return node.subhull
 
 
-def make_subset(points, left, right, sort_key):
-    return sorted(left_points(points, left, right), key=sort_key)
+def make_subset(points: Iterable[Point], left_point: Point, right_point: Point, sort_key: Callable[[Point], Any]) -> list[Point]:
+    return sorted(left_points(points, left_point, right_point), key=sort_key)
 
 
-def left_points(points, p1, p2):
+def left_points(points: Iterable[Point], p1: Point, p2: Point) -> list[Point]:
     """Points p1, p2 and those at the left of the vector p1->p2."""
     return (
         [p1] +
