@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class Vector(BaseModel):
-    coords: Iterable[float]
+    coords: list[float]
     
     @property
     def x(self) -> float:
@@ -61,8 +61,12 @@ class Vector(BaseModel):
 
 
 class Point(BaseModel):
-    coords: Iterable[float]
+    coords: list[float]
     
+    @classmethod
+    def new(cls, *coords):
+        return cls(coords=coords)
+
     @property
     def x(self) -> float:
         return self.coords[0]
@@ -77,7 +81,7 @@ class Point(BaseModel):
     
     @classmethod
     def centroid(cls, *points: Iterable[Point]) -> Point:
-        return cls(*(sum(coord) / len(coord) for coord in zip(*points)))
+        return cls.new(*(sum(coords) / len(coords) for coords in zip(*[p.coords for p in points])))
     
     @staticmethod
     def angle(point1: Point, point2: Point, point3: Point) -> float:
@@ -173,13 +177,13 @@ class Point(BaseModel):
         if not isinstance(other, self.__class__):
             raise TypeError(f"right operand of addition must be of {self.__class__} type")
         
-        return self.__class__(*(c1 + c2 for c1, c2 in zip(self.coords, other.coords)))
+        return self.__class__.new(*(c1 + c2 for c1, c2 in zip(self.coords, other.coords)))
     
     def __sub__(self, other: Point) -> bool:
         if not isinstance(other, self.__class__):
             raise TypeError(f"right operand of subtraction must be of {self.__class__} type")
         
-        return self.__class__(*(c1 - c2 for c1, c2 in zip(self.coords, other.coords)))
+        return self.__class__.new(*(c1 - c2 for c1, c2 in zip(self.coords, other.coords)))
     
     def __hash__(self) -> int:
         return hash(self.coords)
@@ -333,17 +337,14 @@ class BinTreeNode(BaseModel):
 
 class BinTree(BaseModel):
     node_class: ClassVar[type] = BinTreeNode
-    root: BinTreeNode
+    root: BinTreeNode | None = None
 
-    def __init__(self, root):
-        self.root = root
-    
     @classmethod
     def from_iterable(cls, iterable: Iterable) -> BinTree:
         if isinstance(iterable, Generator):
             iterable = list(iterable)
         
-        return cls(root=cls._from_iterable(iterable)) if iterable else cls(None)
+        return cls(root=cls._from_iterable(iterable)) if iterable else cls(root=None)
     
     @classmethod
     def _from_iterable(cls, iterable: Iterable, left: int = 0, right: int | None = None) -> BinTreeNode:
@@ -353,7 +354,7 @@ class BinTree(BaseModel):
             return None
         
         mid = (left + right) // 2
-        node = cls.node_class(iterable[mid])
+        node = cls.node_class(data=iterable[mid])
         node.left = cls._from_iterable(iterable, left, mid-1)
         node.right = cls._from_iterable(iterable, mid+1, right)
         node.set_height()
@@ -409,7 +410,7 @@ class AVLTree(BinTree):
     def _insert(self, data: Any, node: BinTreeNode | None = None) -> BinTreeNode:
         data_is_node = isinstance(data, self.node_class)
         if node is None:
-            return data if data_is_node else BinTreeNode(data)
+            return data if data_is_node else BinTreeNode(data=data)
         
         value = data.data if data_is_node else data
         if value < node.data:
