@@ -23,7 +23,7 @@ class PreparataNode(ThreadedBinTreeNode):
 
 class PreparataThreadedBinTree(ThreadedBinTree):
     node_class: ClassVar[type] = PreparataNode
-    root: PreparataNode
+    root: PreparataNode | None = None
 
 
 def preparata(points: Iterable):
