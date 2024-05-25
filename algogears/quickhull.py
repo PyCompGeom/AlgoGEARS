@@ -36,6 +36,7 @@ class QuickhullNode(BinTreeNode):
 
 class QuickhullTree(BinTree):
     node_class: ClassVar[type] = QuickhullNode
+    root: QuickhullNode
 
 
 def quickhull(points: Iterable[Point]):
