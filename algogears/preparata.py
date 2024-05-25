@@ -1,25 +1,31 @@
+from __future__ import annotations
+from typing import Any, ClassVar, Iterable
 from .core import Point, ThreadedBinTreeNode, ThreadedBinTree, PointType, PathDirection
 
 
 class PreparataNode(ThreadedBinTreeNode):
+    data: Point
+    left: PreparataNode | None = None
+    right: PreparataNode | None = None
+
     @property
-    def point(self):
+    def point(self) -> Point:
         return self.data
     
     @point.setter
-    def point(self, value):
+    def point(self, value: Point) -> None:
         self.data = value
     
     @point.deleter
-    def point(self):
+    def point(self) -> None:
         del self.data
 
 
 class PreparataThreadedBinTree(ThreadedBinTree):
-    node_class = PreparataNode
+    node_class: ClassVar[type] = PreparataNode
 
 
-def preparata(points):
+def preparata(points: Iterable):
     points.sort()
 
     if len(points) < 3:
@@ -67,7 +73,7 @@ def preparata(points):
         yield hull
 
 
-def find_path_to_supporting_point(tree, point, search_left_supporting):
+def find_path_to_supporting_point(tree: PreparataThreadedBinTree, point: Point, search_left_supporting: bool) -> tuple[list[PathDirection], Point]:
     path = []
     node, prev = tree.root, None
     
@@ -81,7 +87,7 @@ def find_path_to_supporting_point(tree, point, search_left_supporting):
     return path, node.point
 
 
-def find_next_node(node, point, search_left_supporting):
+def find_next_node(node: PreparataNode, point: Point, search_left_supporting: bool) -> PreparataNode:
     point_type = PointType.by_points(point, node.point, node.prev.point, node.next.point)
     match point_type:
         case PointType.convex:
