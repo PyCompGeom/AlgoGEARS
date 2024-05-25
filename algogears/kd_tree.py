@@ -1,15 +1,24 @@
-from .core import BinTreeNode, BinTree
+from __future__ import annotations
+from typing import Any, ClassVar, Iterable
+from pydantic import Field
+from .core import BinTreeNode, BinTree, Point
+
+
+class KDTreeNode(BinTreeNode):
+    data: Point
+    left: KDTreeNode | None = None
+    right: KDTreeNode | None = None
 
 
 class KDTree(BinTree):
-    def __init__(self, root, x_range, y_range):
-        super().__init__(root)
-        self.x_range = x_range
-        self.y_range = y_range
-        self.partition = []
-        self.search_list = []
+    node_class: ClassVar[type] = KDTreeNode
+    root: KDTreeNode
+    x_range: tuple[float, float]
+    y_range: tuple[float, float]
+    partition: list[tuple[Point, bool]] = Field(default_factory=list)
+    search_list: list[tuple[Point, bool, bool]] = Field(default_factory=list)
 
-    def build_tree(self, points, node, vertical=True):
+    def build_tree(self, points: Iterable, node: KDTreeNode, vertical: bool = True) -> None:
         mid = len(points) // 2
         part = (points[mid], vertical)
         
@@ -28,14 +37,14 @@ class KDTree(BinTree):
         list_r = sorted(points[-mid:], key=sort_key)
         left, right = list_l[mid // 2], list_r[mid // 2]
 
-        node.left = BinTreeNode(left)
+        node.left = KDTreeNode(data=left)
         if node.data != right:
-            node.right = BinTreeNode(right)
+            node.right = KDTreeNode(data=right)
 
         self.build_tree(list_l, node.left, not vertical)
         self.build_tree(list_r, node.right, not vertical)
 
-    def region_search(self, node, vertical=True):
+    def region_search(self, node: KDTreeNode, vertical: bool = True) -> list[Point]:
         if vertical:
             left, right, coord = self.x_range[0], self.x_range[1], node.data.x
         else:
@@ -57,22 +66,20 @@ class KDTree(BinTree):
 
         return points
 
-    def point_in_region(self, point):
-        return (
-            self.x_range[0] <= point.x
-            and point.x <= self.x_range[1]
-            and self.y_range[0] <= point.y
-            and point.y <= self.y_range[1]
-        )
+    def point_in_region(self, point: Point) -> bool:
+        return self.x_range[0] <= point.x <= self.x_range[1] and self.y_range[0] <= point.y <= self.y_range[1]
+    
+    def __eq__(self, other: object) -> bool:
+        return super().__eq__(other) and self.x_range == other.x_range and self.y_range == other.y_range
 
 
-def kd_tree(points, x_range, y_range):
+def kd_tree(points: Iterable[Point], x_range: list[Point, Point], y_range: list[Point, Point]):
     ordered_x = sorted(points)
     ordered_y = sorted(points, key=lambda p: (p.y, p.x))
     yield ordered_x, ordered_y
 
-    root = BinTreeNode(ordered_x[len(ordered_x) // 2])
-    tree = KDTree(root, x_range, y_range)
+    root = KDTreeNode(data=ordered_x[len(ordered_x) // 2])
+    tree = KDTree(root=root, x_range=x_range, y_range=y_range)
     tree.build_tree(ordered_x, root)
     yield tree.partition
     yield tree
