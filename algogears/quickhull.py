@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Any, Callable, ClassVar, Iterable
 from .core import Line2D, BinTreeNode, BinTree, Point
 
@@ -8,6 +9,8 @@ sort_right_to_left = lambda p: (-p.x, p.y)
 
 class QuickhullNode(BinTreeNode):
     data: list[Point]
+    left: QuickhullNode | None = None
+    right: QuickhullNode | None = None
     h: Point | None = None
     subhull: list[Point] | None = None
 
