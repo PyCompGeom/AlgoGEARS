@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, ClassVar, Iterable
+from typing import ClassVar, Iterable
 from pydantic import Field
 from .core import BinTreeNode, BinTree, Point
 
@@ -12,7 +12,7 @@ class KDTreeNode(BinTreeNode):
 
 class KDTree(BinTree):
     node_class: ClassVar[type] = KDTreeNode
-    root: KDTreeNode
+    root: KDTreeNode | None = None
     x_range: tuple[float, float]
     y_range: tuple[float, float]
     partition: list[tuple[Point, bool]] = Field(default_factory=list)
