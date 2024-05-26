@@ -387,13 +387,6 @@ class BinTree(BaseModel):
         return isinstance(other, self.__class__) and self.root == other.root
 
 
-class ThreadedBinTreeNode(BinTreeNode):
-    left: BinTreeNode | None = None
-    right: BinTreeNode | None = None
-    prev: BinTreeNode | None = None
-    next: BinTreeNode | None = None
-
-
 class AVLTree(BinTree):
     def insert(self, data: Any, starting_node: BinTreeNode | None = None) -> None:
         if starting_node is None:
@@ -486,6 +479,20 @@ class AVLTree(BinTree):
         heavy_node.set_height()
 
         return heavy_node
+
+
+class ThreadedBinTreeNode(BinTreeNode, extra=Extra.allow):
+    left: ThreadedBinTreeNode | None = None
+    right: ThreadedBinTreeNode | None = None
+    prev: ThreadedBinTreeNode | int | None = None
+    next: ThreadedBinTreeNode | int | None = None
+
+    def model_dump(self, *args, **kwargs) -> dict[str, Any]:
+        if kwargs.get('can_serialize', False):
+            kwargs.pop('can_serialize')
+            return BaseModel.model_dump(self, *args, **kwargs)
+        
+        return serialize_threaded_bin_tree_or_its_root(self, *args, **kwargs)
 
 
 class ThreadedBinTree(AVLTree):
