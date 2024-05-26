@@ -1,75 +1,44 @@
+from __future__ import annotations
 from copy import deepcopy
+from typing import ClassVar, Iterable
+from pydantic import Field
 from .core import PathDirection, BinTreeNode, AVLTree, ThreadedBinTree, ThreadedBinTreeNode, PointType, Point
 from .jarvis import jarvis
 
 
 class DynamicHullNode(BinTreeNode):
-    def __init__(
-            self, data, subhull_points, left_supporting_index=0,
-            left_supporting=None, right_supporting=None, optimized_subhull_points=None, left=None, right=None
-        ):
-        super().__init__(data, left, right)
-        self.subhull = SubhullThreadedBinTree.from_iterable(subhull_points)
-        self.optimized_subhull = SubhullThreadedBinTree.from_iterable(optimized_subhull_points if optimized_subhull_points else [])
-        self.left_supporting_index = left_supporting_index
-        self.left_supporting = left_supporting
-        self.right_supporting = right_supporting
+    data: Point
+    subhull: list[Point]
+    optimized_subhull: list[Point] = Field(default_factory=list)
+    left_supporting_index: int = 0
+    left_supporting: Point
+    right_supporting: Point
     
     @property
-    def point(self):
+    def point(self) -> Point:
         return self.data
     
     @point.setter
-    def point(self, value):
+    def point(self, value: Point) -> None:
         self.data = value
     
     @point.deleter
-    def point(self):
+    def point(self) -> None:
         del self.data
 
     @property
-    def left_supporting(self):
-        subhull = self.subhull.traverse_inorder()
-        return self._left_supporting if self._left_supporting else subhull[self.left_supporting_index].point
-    
-    @left_supporting.setter
-    def left_supporting(self, value):
-        self._left_supporting = value
-    
-    @left_supporting.deleter
-    def left_supporting(self):
-        del self._left_supporting
+    def is_point(self) -> bool:
+        return len(self.subhull) == 1
 
     @property
-    def right_supporting(self):
-        subhull = self.subhull.traverse_inorder()
-        try:
-            return self._right_supporting if self._right_supporting else subhull[self.left_supporting_index+1].point
-        except IndexError:
-            return self.left_supporting
-    
-    @right_supporting.setter
-    def right_supporting(self, value):
-        self._right_supporting = value
-    
-    @right_supporting.deleter
-    def right_supporting(self):
-        del self._right_supporting
-
-    @property
-    def is_point(self):
-        return self.subhull.root.is_leaf
-
-    @property
-    def is_segment(self):
-        root = self.subhull.root
-        return not root.left and root.right and root.right.is_leaf
+    def is_segment(self) -> bool:
+        return len(self.subhull) == 2
     
     @classmethod
-    def leaf(cls, point):
-        return cls(point, [point])
+    def leaf(cls, point: Point) -> DynamicHullNode:
+        return cls(data=point, subhull=[point], left_supporting=point, right_supporting=point)
 
-    def weak_equal(self, other):
+    def weak_equal(self, other: object) -> bool:
         return (
             super().weak_equal(other)
             and self.subhull == other.subhull
@@ -78,28 +47,26 @@ class DynamicHullNode(BinTreeNode):
             and self.right_supporting == other.right_supporting
             and self.optimized_subhull == other.optimized_subhull
         )
-    
-    def __repr__(self):
-        return ", ".join(repr(node.point) for node in self.subhull.traverse_inorder())
 
 
 class DynamicHullTree(AVLTree):
-    node_class = DynamicHullNode
+    node_class: ClassVar[type] = DynamicHullNode
+    root: DynamicHullNode
 
     @classmethod
-    def from_iterable(cls, iterable):
-        return cls(cls._from_iterable(iterable))
+    def from_iterable(cls, iterable: Iterable[Point]) -> DynamicHullTree:
+        return cls(root=cls._from_iterable(iterable))
     
     @classmethod
-    def _from_iterable(cls, iterable, i=None, n=None):
+    def _from_iterable(cls, iterable: Iterable[Point], i: list[int] | None = None, n: int | None = None) -> DynamicHullNode:
         if i is None:
             i = [0]
         if n is None:
             n = len(iterable)
         if n == 1:
-            res = DynamicHullNode(iterable[i[0]], [iterable[i[0]]])
+            point = iterable[i[0]]
             i[0] += 1
-            return res
+            return DynamicHullNode.leaf(point)
 
         n_right = n // 2
         n_left = n - n_right
@@ -108,7 +75,7 @@ class DynamicHullTree(AVLTree):
 
         return node
     
-    def insert(self, point, starting_node=None, path=None):
+    def insert(self, point: Point, starting_node: DynamicHullNode | None = None, path: list[PathDirection] | None = None) -> None:
         if starting_node is None:
             starting_node = self.root
         if path is None:
@@ -116,7 +83,7 @@ class DynamicHullTree(AVLTree):
         
         self.root = self._insert(point, starting_node, path)
     
-    def _insert(self, point, node, path):
+    def _insert(self, point: Point, node: DynamicHullNode, path: list[PathDirection]) -> DynamicHullNode:
         if node.is_leaf:
             node_copy = deepcopy(node)
             new_node = DynamicHullNode.leaf(point)
@@ -131,7 +98,7 @@ class DynamicHullTree(AVLTree):
 
         return self._merge_with_rebalance(node)
     
-    def delete(self, point, starting_node=None, path=None):
+    def delete(self, point: Point, starting_node: DynamicHullNode | None = None, path: list[PathDirection] | None = None) -> None:
         if starting_node is None:
             starting_node = self.root
         if path is None:
@@ -139,7 +106,7 @@ class DynamicHullTree(AVLTree):
         
         self.root = self._delete(point, starting_node, path)
     
-    def _delete(self, point, node, path):
+    def _delete(self, point: Point, node: DynamicHullNode, path: list[PathDirection]) -> DynamicHullNode | None:
         if node.is_leaf:
             return None
         elif point <= node.point:
@@ -156,7 +123,7 @@ class DynamicHullTree(AVLTree):
         
         return self._merge_with_rebalance(node)
     
-    def _merge_with_rebalance(self, node):
+    def _merge_with_rebalance(self, node: DynamicHullNode) -> DynamicHullNode:
         node.set_height()
 
         if node.balance_factor == -2 or node.balance_factor == 2:
@@ -173,28 +140,35 @@ class DynamicHullTree(AVLTree):
 
 
 class SubhullNode(ThreadedBinTreeNode):
+    data: Point
+    left: SubhullNode | None = None
+    right: SubhullNode | None = None
+    prev: SubhullNode | None = None
+    next: SubhullNode | None = None
+
     @property
-    def point(self):
+    def point(self) -> Point:
         return self.data
     
     @point.setter
-    def point(self, value):
+    def point(self, value: Point) -> None:
         self.data = value
     
     @point.deleter
-    def point(self):
+    def point(self) -> None:
         del self.data
 
 
 class SubhullThreadedBinTree(ThreadedBinTree):
-    node_class = SubhullNode
+    node_class: ClassVar[type] = SubhullNode
+    root: SubhullNode
 
     @classmethod
-    def from_iterable(cls, iterable, circular=False):
-        return super().from_iterable(iterable, circular)
+    def from_iterable(cls, iterable):
+        return super().from_iterable(iterable, circular=False)
 
 
-def upper_dynamic_hull(points, point_to_insert_or_delete):
+def upper_dynamic_hull(points: Iterable[Point], point_to_insert_or_delete: Point):
     points.sort()
 
     tree = DynamicHullTree.from_iterable(points)
@@ -216,32 +190,34 @@ def upper_dynamic_hull(points, point_to_insert_or_delete):
     yield path
 
     optimize_dynamic_hull_tree(modified_tree.root)
-    hull = [n.point for n in modified_tree.root.subhull.traverse_inorder()]
+    hull = modified_tree.root.subhull
 
     yield modified_tree, hull
     yield hull
 
 
-def merge(node1, node2):
+def merge(node1: DynamicHullNode, node2: DynamicHullNode) -> DynamicHullNode:
     if node1.is_point or node2.is_point or node1.is_segment or node2.is_segment:
         return merge_trivial(node1, node2)
 
-    subhull_node1, subhull_node2 = node1.subhull.root, node2.subhull.root
-    prev1, prev2 = None, None
-    while prev1 != subhull_node1 or prev2 != subhull_node2:
-        prev1, prev2 = subhull_node1, subhull_node2
+    # Find supporting points in subhull TBTs
+    subhull_tbt1, subhull_tbt2 = SubhullThreadedBinTree.from_iterable(node1.subhull), SubhullThreadedBinTree.from_iterable(node2.subhull)
+    subhull_node1, subhull_node2 = subhull_tbt1.root, subhull_tbt2.root
+    prev_node1, prev_node2 = None, None
+    while prev_node1 is not subhull_node1 or prev_node2 is not subhull_node2:
+        prev_node1, prev_node2 = subhull_node1, subhull_node2
         subhull_node1, subhull_node2 = next_nodes(subhull_node1, subhull_node2)
     
-    subhull_nodes1, subhull_nodes2 = node1.subhull.traverse_inorder(), node2.subhull.traverse_inorder()
-    subhull = [
-        node.point for node in
-        subhull_nodes1[:subhull_nodes1.index(prev1)+1] + subhull_nodes2[subhull_nodes2.index(prev2):]
-    ]
+    # Merge two subhulls into a new subhull
+    subhull = node1.subhull[:node1.subhull.index(prev_node1.point)+1] + node2.subhull[node2.subhull.index(prev_node2.point):]
     
+    # Construct a parent node containing the new subhull
     joint_node = DynamicHullNode(
         data=node1.rightmost_node.point,
-        subhull_points=subhull,
-        left_supporting_index=subhull.index(prev1.point)
+        subhull=subhull,
+        left_supporting_index=subhull.index(prev_node1.point),
+        left_supporting=prev_node1.point,
+        right_supporting=prev_node2.point
     )
     joint_node.left, joint_node.right = node1, node2
     joint_node.set_height()
@@ -249,16 +225,13 @@ def merge(node1, node2):
     return joint_node
 
 
-def merge_trivial(node1, node2):
+def merge_trivial(node1: DynamicHullNode, node2: DynamicHullNode) -> DynamicHullNode:
     """
         Merge two nodes by constructing the convex hull of their points with Jarvis' algorithm and extracting its upper part.
         
-        For efficiency's sake, only use in trivial cases, such as point & point, segment & point, segment & segment, and segment & 3-chain.
+        For efficiency's sake, only use in trivial cases, such as point & point, segment & point, and segment & segment.
     """
-    subhull_root1, subhull_root2 = node1.subhull.root, node2.subhull.root
-    points1 = [node.point for node in subhull_root1.traverse_inorder()]
-    points2 = [node.point for node in subhull_root2.traverse_inorder()]
-    points = points1 + points2
+    points = node1.subhull + node2.subhull
     subhull = (
         ([] if len(points) == 2 and points[0].x == points[1].x else [points[0]]) +
         [p for p in jarvis(points) if Point.direction(points[0], points[-1], p) < 0] +
@@ -266,11 +239,16 @@ def merge_trivial(node1, node2):
     )
     
     rightmost_point_in_left_subtree = node1.rightmost_node.point
-    left_supporting_point = subhull[0] if len(subhull) == 1 else next(p for p in reversed(points1) if p in subhull)
+    left_supporting = subhull[0] if len(subhull) == 1 else next(p for p in reversed(node1.subhull) if p in subhull)
+    left_supporting_index = subhull.index(left_supporting)
+    right_supporting = subhull[0] if len(subhull) == 1 else subhull[left_supporting_index+1]
+    
     joint_node = DynamicHullNode(
         data=rightmost_point_in_left_subtree,
-        subhull_points=subhull,
-        left_supporting_index=subhull.index(left_supporting_point)
+        subhull=subhull,
+        left_supporting_index=left_supporting_index,
+        left_supporting=left_supporting,
+        right_supporting=right_supporting
     )
     joint_node.left, joint_node.right = node1, node2
     joint_node.set_height()
@@ -278,12 +256,12 @@ def merge_trivial(node1, node2):
     return joint_node
 
 
-def next_nodes(node1, node2):
+def next_nodes(node1: DynamicHullNode, node2: DynamicHullNode) -> DynamicHullNode:
     type1, type2 = PointType.by_nodes(node2, node1), PointType.by_nodes(node1, node2)
     return next_left_node(node1, type1), next_right_node(node2, type2)
 
 
-def next_left_node(node, point_type):
+def next_left_node(node: DynamicHullNode, point_type: PointType) -> DynamicHullNode:
     return {
         PointType.reflex: node.right,
         PointType.right_supporting: node,
@@ -291,7 +269,7 @@ def next_left_node(node, point_type):
     }[point_type]
 
 
-def next_right_node(node, point_type):
+def next_right_node(node: DynamicHullNode, point_type: PointType) -> DynamicHullNode:
     return {
         PointType.reflex: node.left,
         PointType.left_supporting: node,
@@ -299,12 +277,12 @@ def next_right_node(node, point_type):
     }[point_type]
 
 
-def optimize_dynamic_hull_tree(node, parent_node=None):
+def optimize_dynamic_hull_tree(node: DynamicHullNode, parent_node: DynamicHullNode | None = None) -> None:
     node.optimized_subhull = node.subhull
     _optimize_dynamic_hull_tree(node, parent_node)
 
 
-def _optimize_dynamic_hull_tree(node, parent_node):
+def _optimize_dynamic_hull_tree(node: DynamicHullNode, parent_node: DynamicHullNode | None) -> None:
     if node.left:
         optimize_dynamic_hull_tree(node.left, node)
     if node.right:
@@ -313,9 +291,7 @@ def _optimize_dynamic_hull_tree(node, parent_node):
         optimize_subhull(node, parent_node)
 
 
-def optimize_subhull(node, parent_node):
-    node_points = [n.point for n in node.subhull.traverse_inorder()]
-    parent_points = {n.point for n in parent_node.subhull.traverse_inorder()}
-
-    filtered_points = [p for p in node_points if p not in parent_points]
-    node.optimized_subhull = SubhullThreadedBinTree.from_iterable(filtered_points)
+def optimize_subhull(node: DynamicHullNode, parent_node: DynamicHullNode) -> None:
+    node_points = node.subhull
+    parent_points = set(parent_node.subhull)
+    node.optimized_subhull = [p for p in node_points if p not in parent_points]
