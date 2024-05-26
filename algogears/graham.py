@@ -1,10 +1,10 @@
 from math import pi
 from typing import Iterable
-from pydantic import BaseModel, Field
-from .core import Point
+from pydantic import Field
+from .core import Point, SerializablePydanticModelWithPydanticFields
 
 
-class GrahamStepsTableRow(BaseModel):
+class GrahamStepsTableRow(SerializablePydanticModelWithPydanticFields):
     point_triple: tuple[Point, Point, Point]
     is_angle_less_than_pi: bool
     
@@ -19,7 +19,7 @@ class GrahamStepsTableRow(BaseModel):
         return f"[{str(self.point_triple)}, {str(self.is_angle_less_than_pi)}]"
 
 
-class GrahamStepsTable(BaseModel):
+class GrahamStepsTable(SerializablePydanticModelWithPydanticFields):
     ordered_points: list[Point]
     rows: list[GrahamStepsTableRow] = Field(default_factory=list)
     

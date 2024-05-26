@@ -8,6 +8,8 @@ from .jarvis import jarvis
 
 class DynamicHullNode(BinTreeNode):
     data: Point
+    left: DynamicHullNode | None = None
+    right: DynamicHullNode | None = None
     subhull: list[Point]
     optimized_subhull: list[Point] = Field(default_factory=list)
     left_supporting_index: int = 0
@@ -51,7 +53,7 @@ class DynamicHullNode(BinTreeNode):
 
 class DynamicHullTree(AVLTree):
     node_class: ClassVar[type] = DynamicHullNode
-    root: DynamicHullNode
+    root: DynamicHullNode | None = None
 
     @classmethod
     def from_iterable(cls, iterable: Iterable[Point]) -> DynamicHullTree:
@@ -143,8 +145,8 @@ class SubhullNode(ThreadedBinTreeNode):
     data: Point
     left: SubhullNode | None = None
     right: SubhullNode | None = None
-    prev: SubhullNode | None = None
-    next: SubhullNode | None = None
+    prev: SubhullNode | int | None = None
+    next: SubhullNode | int | None = None
 
     @property
     def point(self) -> Point:
@@ -161,7 +163,7 @@ class SubhullNode(ThreadedBinTreeNode):
 
 class SubhullThreadedBinTree(ThreadedBinTree):
     node_class: ClassVar[type] = SubhullNode
-    root: SubhullNode
+    root: SubhullNode | None = None
 
     @classmethod
     def from_iterable(cls, iterable):

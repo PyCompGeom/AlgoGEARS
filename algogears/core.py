@@ -1,13 +1,53 @@
 from __future__ import annotations
+from copy import deepcopy
 from enum import Enum
 from math import inf, pi, acos, atan2, isclose
 from typing import Iterable, Generator, Any, ClassVar
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
+
+
+class SerializablePydanticModelWithPydanticFields(BaseModel):
+    """
+        A class to ensure correct serialization of Pydantic models that have fields also being Pydantic models,
+        with possible cyclic references whose custom serialization is specified in those models.
+    """
+    def model_dump(self, *args, **kwargs):
+        tmp_fields_dict = {}
+        this_utility_class = SerializablePydanticModelWithPydanticFields
+
+        for field, value in self.__dict__.items():
+            tmp_fields_dict[field] = value
+            
+            if isinstance(value, this_utility_class):
+                setattr(self, field, value.model_dump())
+            elif isinstance(value, dict):
+                setattr(
+                    self,
+                    field,
+                    {
+                        (k.model_dump() if isinstance(k, this_utility_class) else k): (v.model_dump() if isinstance(v, this_utility_class) else v)
+                        for k, v in value.items()
+                    }
+                )
+            elif not isinstance(value, str) and not isinstance(value, BaseModel) and isinstance(value, Iterable): # BaseModel's are Iterables, but we don't need them to be checked here 
+                generator = (item.model_dump() if isinstance(item, this_utility_class) else item for item in value)
+                setattr(self, field, generator if isinstance(value, Generator) else value.__class__(generator))
+                
+        result = super().model_dump(*args, **kwargs)
+
+        for field, value in tmp_fields_dict.items():
+            setattr(self, field, value)
+        
+        return result
 
 
 class Vector(BaseModel):
-    coords: list[float]
+    coords: tuple[float, ...]
     
+    @classmethod
+    def new(cls, *coords):
+        return cls(coords=coords)
+
     @property
     def x(self) -> float:
         return self.coords[0]
@@ -192,14 +232,16 @@ class Point(BaseModel):
         return f"({', '.join(str(c) for c in self.coords)})"
 
 
-class Line2D(BaseModel):
+class Line2D(SerializablePydanticModelWithPydanticFields):
     """A 2D line represented by the equation ax + by + c = 0 or y = slope * x + y_intercept."""
-    
     point1: Point
     point2: Point
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+        if len(self.point1) != 2 or len(self.point2) != 2:
+            raise ValueError(f"2D line must be initialized with two 2D points")
 
         if self.point1 == self.point2:
             raise ValueError(f"2D line must be initialized with two distinct points")
@@ -225,7 +267,7 @@ class Line2D(BaseModel):
         return -inf if self.b == 0 else -self.c / self.b
 
 
-class BinTreeNode(BaseModel):
+class BinTreeNode(SerializablePydanticModelWithPydanticFields):
     data: Any
     left: BinTreeNode | None = None
     right: BinTreeNode | None = None
@@ -335,7 +377,7 @@ class BinTreeNode(BaseModel):
         )
     
 
-class BinTree(BaseModel):
+class BinTree(SerializablePydanticModelWithPydanticFields):
     node_class: ClassVar[type] = BinTreeNode
     root: BinTreeNode | None = None
 
@@ -497,6 +539,20 @@ class ThreadedBinTreeNode(BinTreeNode, extra=Extra.allow):
 
 class ThreadedBinTree(AVLTree):
     node_class: ClassVar[type] = ThreadedBinTreeNode
+    root: ThreadedBinTreeNode | None = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+        if self.root and (isinstance(self.root.prev, int) or isinstance(self.root.next, int)):
+            deserialize_threaded_bin_tree_root(self.root)
+
+    def model_dump(self, *args, **kwargs):
+        if kwargs.get('can_serialize', False):
+            kwargs.pop('can_serialize')
+            return BaseModel.model_dump(self, *args, **kwargs)
+        
+        return serialize_threaded_bin_tree_or_its_root(self, *args, **kwargs)
 
     @classmethod
     def from_iterable(cls, iterable: Iterable[ThreadedBinTreeNode], circular: bool = True) -> ThreadedBinTree:
@@ -512,6 +568,37 @@ class ThreadedBinTree(AVLTree):
             nodes[-1].next = None
         
         return tree
+
+
+def serialize_threaded_bin_tree_or_its_root(root_or_tree: ThreadedBinTreeNode | ThreadedBinTree, *args, **kwargs) -> dict[str, Any]:
+    """
+        Serializes a threaded bin tree or its root. To correctly serialize potentially circular references to prev & next nodes, we store their inorder traversal indices instead.
+    """
+    copy = deepcopy(root_or_tree)
+    nodes_inorder = copy.traverse_inorder() if isinstance(copy, ThreadedBinTreeNode) else copy.root.traverse_inorder()
+    
+    for i, node in enumerate(nodes_inorder):
+        node.inorder_index = i
+    
+    for i, node in enumerate(nodes_inorder):
+        node.prev = node.prev.inorder_index if node.prev is not None else node.prev
+        node.next = node.next.inorder_index if node.next is not None else node.next
+
+    return copy.model_dump(*args, **(kwargs | {'can_serialize': True}))
+
+
+def deserialize_threaded_bin_tree_root(root: ThreadedBinTreeNode) -> None:
+    """
+        Deserializes a threaded bin tree's root, assuming that potentially circular references to prev & next nodes in its subtree are stored as their inorder traversal indices.
+    """
+    nodes_inorder = root.traverse_inorder()
+
+    for i, node in enumerate(nodes_inorder):
+        node.inorder_index = i
+        node.prev_index = int(node.prev) if node.prev is not None else node.prev
+        node.prev = nodes_inorder[int(node.prev)] if node.prev is not None else node.prev
+        node.next_index = int(node.next) if node.next is not None else node.next
+        node.next = nodes_inorder[int(node.next)] if node.next is not None else node.next
 
 
 class PathDirection(str, Enum):

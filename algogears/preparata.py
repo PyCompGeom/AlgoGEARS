@@ -7,8 +7,8 @@ class PreparataNode(ThreadedBinTreeNode):
     data: Point
     left: PreparataNode | None = None
     right: PreparataNode | None = None
-    prev: PreparataNode | None = None
-    next: PreparataNode | None = None
+    prev: PreparataNode | int | None = None
+    next: PreparataNode | int | None = None
 
     @property
     def point(self) -> Point:
