@@ -61,7 +61,7 @@ class Vector(BaseModel):
 
 
 class Point(BaseModel):
-    coords: list[float]
+    coords: tuple[float, ...]
     
     @classmethod
     def new(cls, *coords):
