@@ -268,27 +268,64 @@ class Line2D(SerializablePydanticModelWithPydanticFields):
 
 
 class GraphEdge(SerializablePydanticModelWithPydanticFields):
-    first: Point
-    second: Point
+    first: object
+    second: object
     weight: float = 0
+    node_class: ClassVar[type] = object
 
     def __hash__(self) -> int:
-        return hash((self.first, self.second))
+        return hash((self.first, self.second, self.weight))
 
 
 class Graph(SerializablePydanticModelWithPydanticFields):
-    nodes: set[Point] = Field(default_factory=set)
+    nodes: set[object] = Field(default_factory=set)
     edges: set[GraphEdge] = Field(default_factory=set)
+    node_class: ClassVar[type] = object
+    edge_class: ClassVar[type] = GraphEdge
 
     def model_post_init(self, __context: Any) -> None:
-        if any(edge.first not in self.nodes or edge.second not in self.nodes for edge in self.edges):
-            raise ValueError(f"Nodes in graph's edges should be from its nodes set")
+        if not all(self.contains_edge_nodes(edge) for edge in self.edges):
+            raise ValueError(f"Nodes in graph's edges must be from its nodes set")
 
-    def add_node(self, node):
+    def contains_edge_nodes(self, edge: GraphEdge):
+        return edge.first in self.nodes and edge.second in self.nodes
+
+    def add_node(self, node: Any) -> None:
+        if not isinstance(node, self.node_class):
+            raise TypeError(f"Node must be of {self.node_class} type")
+        
         self.nodes.add(node)
     
-    def add_edge(self, edge):
+    def add_edge(self, edge: GraphEdge) -> None:
+        if not isinstance(edge, self.edge_class):
+            raise TypeError(f"Edge must be of {self.edge_class} type")
+        
+        if not self.contains_edge_nodes(edge):
+            raise ValueError(f"Nodes in edge must be from the graph's nodes set")
+        
         self.edges.add(edge)
+
+
+class PlanarStraightLineGraphEdge(GraphEdge):
+    first: Point
+    second: Point
+    node_class: ClassVar[type] = Point
+
+
+class PlanarStraightLineGraph(Graph):
+    nodes: set[Point] = Field(default_factory=set)
+    edges: set[PlanarStraightLineGraphEdge] = Field(default_factory=set)
+    node_class: ClassVar[type] = Point
+    edge_class: ClassVar[type] = PlanarStraightLineGraphEdge
+
+    def contains_edge_nodes(self, edge: PlanarStraightLineGraphEdge):
+        return super().contains_edge_nodes(edge)
+
+    def add_node(self, node: Point) -> None:
+        return super().add_node(node)
+    
+    def add_edge(self, edge: PlanarStraightLineGraphEdge) -> None:
+        return super().add_edge(edge)
 
 
 class BinTreeNode(SerializablePydanticModelWithPydanticFields):
