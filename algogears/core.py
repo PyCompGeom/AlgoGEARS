@@ -3,7 +3,7 @@ from copy import deepcopy
 from enum import Enum
 from math import inf, pi, acos, atan2, isclose
 from typing import Iterable, Generator, Any, ClassVar
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Extra, Field
 
 
 class SerializablePydanticModelWithPydanticFields(BaseModel):
@@ -265,6 +265,30 @@ class Line2D(SerializablePydanticModelWithPydanticFields):
     @property
     def y_intercept(self) -> float:
         return -inf if self.b == 0 else -self.c / self.b
+
+
+class GraphEdge(SerializablePydanticModelWithPydanticFields):
+    first: Point
+    second: Point
+    weight: float = 0
+
+    def __hash__(self) -> int:
+        return hash((self.first, self.second))
+
+
+class Graph(SerializablePydanticModelWithPydanticFields):
+    nodes: set[Point] = Field(default_factory=set)
+    edges: set[GraphEdge] = Field(default_factory=set)
+
+    def model_post_init(self, __context: Any) -> None:
+        if any(edge.first not in self.nodes or edge.second not in self.nodes for edge in self.edges):
+            raise ValueError(f"Nodes in graph's edges should be from its nodes set")
+
+    def add_node(self, node):
+        self.nodes.add(node)
+    
+    def add_edge(self, edge):
+        self.edges.add(edge)
 
 
 class BinTreeNode(SerializablePydanticModelWithPydanticFields):
