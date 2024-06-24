@@ -232,6 +232,25 @@ class Point(BaseModel):
         return f"({', '.join(str(c) for c in self.coords)})"
 
 
+class Turn:
+    LEFT = 'left'
+    RIGHT = 'right'
+    STRAIGHT = 'straight'
+
+    def __new__(cls, start_point: Point, intermediary_point: Point, end_point: Point) -> Turn:
+        vector_start_to_end = Vector.from_points(start_point, end_point)
+        vector_start_to_intermediary = Vector.from_points(start_point, intermediary_point)
+
+        direction = Vector.cross_product(vector_start_to_end, vector_start_to_intermediary)
+
+        if direction < 0:
+            return cls.LEFT
+        if direction > 0:
+            return cls.RIGHT
+        
+        return cls.STRAIGHT
+
+
 class Line2D(SerializablePydanticModelWithPydanticFields):
     """A 2D line represented by the equation ax + by + c = 0 or y = slope * x + y_intercept."""
     point1: Point
