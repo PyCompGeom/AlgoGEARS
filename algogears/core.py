@@ -290,10 +290,30 @@ class GraphEdge(SerializablePydanticModelWithPydanticFields):
     first: object
     second: object
     weight: float = 0
-    node_class: ClassVar[type] = object
 
     def __hash__(self) -> int:
-        return hash((self.first, self.second, self.weight))
+        return hash((self.first, self.second)) + hash((self.second, self.first)) + hash(self.weight)
+    
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, self.__class__)
+            and (
+                self.first == other.first and self.second == other.second
+                or self.first == other.second and self.second == other.first
+            )
+        )
+
+    @property
+    def reversed(self) -> GraphEdge:
+        return self.__class__(first=self.second, second=self.first, weight=self.weight)
+    
+    def other_node(self, node: object):
+        if self.first == node:
+            return self.second
+        if self.second == node:
+            return self.first
+
+        raise ValueError(f"node {node} is absent in this edge")
 
 
 class Graph(SerializablePydanticModelWithPydanticFields):
@@ -302,33 +322,73 @@ class Graph(SerializablePydanticModelWithPydanticFields):
     node_class: ClassVar[type] = object
     edge_class: ClassVar[type] = GraphEdge
 
-    def model_post_init(self, __context: Any) -> None:
-        if not all(self.contains_edge_nodes(edge) for edge in self.edges):
-            raise ValueError(f"Nodes in graph's edges must be from its nodes set")
-
-    def contains_edge_nodes(self, edge: GraphEdge):
-        return edge.first in self.nodes and edge.second in self.nodes
-
-    def add_node(self, node: Any) -> None:
+    def add_node(self, node: object) -> None:
         if not isinstance(node, self.node_class):
-            raise TypeError(f"Node must be of {self.node_class} type")
-        
+            raise TypeError(f"nodes of {self.__class__.__name__} must be of {self.node_class.__name__} type")
+
         self.nodes.add(node)
-    
+
     def add_edge(self, edge: GraphEdge) -> None:
         if not isinstance(edge, self.edge_class):
-            raise TypeError(f"Edge must be of {self.edge_class} type")
-        
-        if not self.contains_edge_nodes(edge):
-            raise ValueError(f"Nodes in edge must be from the graph's nodes set")
+            raise TypeError(f"edges of {self.__class__.__name__} must be of {self.edge_class.__name__} type")
+
+        if edge.reversed not in self.edges:
+            self.edges.add(edge)
+            
+            self.add_node(edge.first)
+            self.add_node(edge.second)
+    
+    def has_node(self, node: object) -> bool:
+        return node in self.nodes
+    
+    def has_edge(self, edge: GraphEdge) -> bool:
+        return edge in self.edges or edge.reversed in self.edges
+
+    def remove_node(self, node: object) -> None:
+        self.nodes.remove(node)
+
+        for edge in self.edges:
+            if edge.first == node or edge.second == node:
+                self.remove_edge(edge)
+    
+    def remove_edge(self, edge: GraphEdge) -> None:
+        self.edges.remove(edge)
+    
+    def edges_of(self, node: object) -> list[GraphEdge]:
+        return [edge for edge in self.edges if edge.first == node or edge.second == node]
+
+
+class OrientedGraphEdge(GraphEdge):
+    def __hash__(self) -> int:
+        return hash((self.first, self.second, self.weight))
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, self.__class__)
+            and self.first == other.first
+            and self.second == other.second
+        )
+
+
+class OrientedGraph(Graph):
+    def add_edge(self, edge: GraphEdge) -> None:
+        if not isinstance(edge, self.edge_class):
+            raise TypeError(f"edges of {self.__class__.__name__} must be of {self.edge_class.__name__} type")
         
         self.edges.add(edge)
+
+        if edge.first not in self.nodes:
+            self.add_node(edge.first)
+        if edge.second not in self.nodes:
+            self.add_node(edge.second)
+    
+    def has_edge(self, edge: GraphEdge) -> bool:
+        return edge in self.edges
 
 
 class PlanarStraightLineGraphEdge(GraphEdge):
     first: Point
     second: Point
-    node_class: ClassVar[type] = Point
 
 
 class PlanarStraightLineGraph(Graph):
@@ -337,14 +397,37 @@ class PlanarStraightLineGraph(Graph):
     node_class: ClassVar[type] = Point
     edge_class: ClassVar[type] = PlanarStraightLineGraphEdge
 
-    def contains_edge_nodes(self, edge: PlanarStraightLineGraphEdge):
-        return super().contains_edge_nodes(edge)
 
-    def add_node(self, node: Point) -> None:
-        return super().add_node(node)
+class OrientedPlanarStraightLineGraphEdge(OrientedGraphEdge):
+    first: Point
+    second: Point
+
+
+class OrientedPlanarStraightLineGraph(OrientedGraph):
+    nodes: set[Point] = Field(default_factory=set)
+    edges: set[OrientedPlanarStraightLineGraphEdge] = Field(default_factory=set)
+    node_class: ClassVar[type] = Point
+    edge_class: ClassVar[type] = OrientedPlanarStraightLineGraphEdge
+
+    @classmethod
+    def from_planar_straight_line_graph(cls, planar_straight_line_graph: PlanarStraightLineGraph) -> OrientedPlanarStraightLineGraph:
+        nodes = planar_straight_line_graph.nodes
+        edges = {cls.upward_oriented_planar_straight_line_graph_edge(edge) for edge in planar_straight_line_graph.edges}
+        return cls(nodes=nodes, edges=edges)
+
+    @classmethod
+    def upward_oriented_planar_straight_line_graph_edge(cls, edge: PlanarStraightLineGraphEdge) -> OrientedPlanarStraightLineGraphEdge:
+        lower_node = min(edge.first, edge.second, key=lambda e: (e.y, e.x))
+        upper_node = edge.other_node(lower_node)
+        return OrientedPlanarStraightLineGraphEdge(first=lower_node, second=upper_node, weight=edge.weight)
+
+    def inward_edges(self, node: Point) -> list[OrientedPlanarStraightLineGraphEdge]:
+        inward_edges = (edge for edge in self.edges_of(node) if edge.second == node)
+        return sorted(inward_edges, key=lambda edge: Point.nonnegative_polar_angle(edge.other_node(node), node))
     
-    def add_edge(self, edge: PlanarStraightLineGraphEdge) -> None:
-        return super().add_edge(edge)
+    def outward_edges(self, node: Point) -> list[OrientedPlanarStraightLineGraphEdge]:
+        outward_edges = (edge for edge in self.edges_of(node) if edge.first == node)
+        return sorted(outward_edges, key=lambda edge: -Point.polar_angle(edge.other_node(node), node))
 
 
 class BinTreeNode(SerializablePydanticModelWithPydanticFields):

@@ -1,20 +1,5 @@
 import pytest
-from algogears.core import Graph, GraphEdge, PlanarStraightLineGraph, PlanarStraightLineGraphEdge
-
-
-def test_graph_edge_creation():
-    edge = GraphEdge(first=1, second=2, weight=1)
-
-    assert edge.first == 1
-    assert edge.second == 2
-    assert edge.weight == 1
-
-
-def test_graph_edge_hash():
-    edge1 = GraphEdge(first=1, second=2, weight=1)
-    edge2 = GraphEdge(first=1, second=2, weight=1)
-
-    assert hash(edge1) == hash(edge2)
+from algogears.core import Graph, GraphEdge
 
 
 def test_graph_creation_default_correct():
@@ -30,14 +15,6 @@ def test_graph_creation_correct():
     graph = Graph(nodes=nodes, edges=edges)
     assert graph.nodes == set(nodes)
     assert graph.edges == set(edges)
-
-
-def test_graph_creation_incorrect_nodes_in_edge():
-    nodes = [1, 2]
-    edges = [GraphEdge(first=100, second=2)]
-
-    with pytest.raises(ValueError):
-        _ = Graph(nodes=nodes, edges=edges)
 
 
 def test_graph_add_node_correct():
@@ -57,6 +34,16 @@ def test_graph_add_edge_correct():
     assert graph.edges == {new_edge}
 
 
+def test_graph_add_edge_with_new_nodes_correct():
+    nodes = [1, 2]
+    graph = Graph(nodes=nodes)
+
+    new_edge = GraphEdge(first=3, second=4)
+    graph.add_edge(new_edge)
+
+    assert graph.edges == {new_edge}
+
+
 def test_graph_add_edge_incorrect_type():
     graph = Graph()
     
@@ -64,10 +51,15 @@ def test_graph_add_edge_incorrect_type():
         graph.add_edge(42)
 
 
-def test_graph_add_edge_incorrect_nodes_in_edge():
-    nodes = [1, 2]
-    graph = Graph(nodes=nodes)
+def test_graph_eq_edges_with_same_nodes_in_same_direction():
+    graph1 = Graph(nodes={1, 2}, edges={GraphEdge(first=1, second=2, weight=1.5)})
+    graph2 = Graph(nodes={1, 2}, edges={GraphEdge(first=1, second=2, weight=1.5)})
 
-    with pytest.raises(ValueError):
-        new_edge = GraphEdge(first=100, second=200)
-        graph.add_edge(new_edge)
+    assert graph1 == graph2
+
+
+def test_graph_eq_edges_with_same_nodes_in_different_directions():
+    graph1 = Graph(nodes={1, 2}, edges={GraphEdge(first=1, second=2, weight=1.5)})
+    graph2 = Graph(nodes={1, 2}, edges={GraphEdge(first=2, second=1, weight=1.5)})
+
+    assert graph1 == graph2
