@@ -144,3 +144,90 @@ def test_oriented_planar_straight_line_graph_from_planar_straight_line_graph():
     oriented_pslg = OrientedPlanarStraightLineGraph(nodes=nodes, edges=oriented_edges)
 
     assert oriented_pslg == OrientedPlanarStraightLineGraph.from_planar_straight_line_graph(pslg)
+
+
+def test_oriented_planar_straight_line_graph_regularization():
+    """Graph adapted from 'Computational Geometry: An Introduction' by Franco P. Preparata and Michael Ian Shamos."""
+    nodes = [
+        Point.new(1, 1),
+        Point.new(7, 1),
+        Point.new(16, 1),
+        Point.new(4, 2),
+        Point.new(13, 3),
+        Point.new(5, 4),
+        Point.new(4, 6),
+        Point.new(18, 7),
+        Point.new(15, 8),
+        Point.new(10, 9),
+        Point.new(1, 10),
+        Point.new(14, 11),
+        Point.new(7, 12)
+    ]
+    edges = [
+        OrientedPlanarStraightLineGraphEdge(first=nodes[0], second=nodes[1], name='e1'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[0], second=nodes[10], name='e10'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[1], second=nodes[4], name='e2'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[1], second=nodes[8], name='e7'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[2], second=nodes[4], name='e3'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[2], second=nodes[7], name='e5'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[3], second=nodes[8], name='e6'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[3], second=nodes[10], name='e11'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[5], second=nodes[6], name='e4'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[5], second=nodes[9], name='e8'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[6], second=nodes[10], name='e12'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[6], second=nodes[12], name='e15'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[7], second=nodes[11], name='e14'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[8], second=nodes[9], name='e9'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[8], second=nodes[11], name='e13'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[11], second=nodes[12], name='e16'),
+    ]
+    oriented_pslg = OrientedPlanarStraightLineGraph(nodes=nodes, edges=edges)
+    
+    oriented_pslg.regularize()
+
+    regularizing_edges = [
+        OrientedPlanarStraightLineGraphEdge(first=nodes[1], second=nodes[2]),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[1], second=nodes[3]),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[3], second=nodes[5]),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[4], second=nodes[7]),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[9], second=nodes[11]),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[10], second=nodes[12]),
+    ]
+    assert oriented_pslg.is_regular()
+    assert set(edges + regularizing_edges) == oriented_pslg.edges
+
+
+def test_planar_straight_line_graph_regularization_already_regular():
+    nodes = [
+        Point.new(6, 1),
+        Point.new(12, 4),
+        Point.new(3, 6),
+        Point.new(7, 7),
+        Point.new(11, 10),
+        Point.new(7, 11),
+        Point.new(11, 12),
+        Point.new(1, 14),
+        Point.new(6, 16),
+    ]
+    edges = [
+        OrientedPlanarStraightLineGraphEdge(first=nodes[0], second=nodes[1], name='e1'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[0], second=nodes[2], name='e2'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[0], second=nodes[3], name='e4'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[1], second=nodes[4], name='e6'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[2], second=nodes[3], name='e3'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[2], second=nodes[5], name='e7'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[2], second=nodes[7], name='e12'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[3], second=nodes[4], name='e5'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[3], second=nodes[5], name='e8'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[4], second=nodes[5], name='e9'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[4], second=nodes[6], name='e11'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[5], second=nodes[6], name='e10'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[5], second=nodes[8], name='e14'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[6], second=nodes[8], name='e15'),
+        OrientedPlanarStraightLineGraphEdge(first=nodes[7], second=nodes[8], name='e13'),
+    ]
+    oriented_pslg = OrientedPlanarStraightLineGraph(nodes=nodes, edges=edges)
+
+    oriented_pslg.regularize()
+    assert oriented_pslg.is_regular()
+    assert set(edges) == oriented_pslg.edges

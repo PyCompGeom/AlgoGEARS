@@ -401,6 +401,10 @@ class PlanarStraightLineGraph(Graph):
 class OrientedPlanarStraightLineGraphEdge(OrientedGraphEdge):
     first: Point
     second: Point
+    name: str | None = None
+
+    def __repr__(self) -> str:
+        return self.name
 
 
 class OrientedPlanarStraightLineGraph(OrientedGraph):
@@ -421,6 +425,39 @@ class OrientedPlanarStraightLineGraph(OrientedGraph):
         upper_node = edge.other_node(lower_node)
         return OrientedPlanarStraightLineGraphEdge(first=lower_node, second=upper_node, weight=edge.weight)
 
+    def is_regular(self) -> bool:
+        min_node = min(self.nodes, key=lambda node: (node.y, node.x))
+        max_node = max(self.nodes, key=lambda node: (node.y, node.x))
+        
+        return all(
+            (node is min_node or self.inward_edges(node))
+            and
+            (node is max_node or self.outward_edges(node))
+            for node in self.nodes
+        )
+
+    def regularize(self) -> None:
+        nodes_bottom_to_top = sorted(self.nodes, key=lambda node: (node.y, node.x))
+        self.regularize_bottom_to_top(nodes_bottom_to_top)
+
+        nodes_top_to_bottom = reversed(nodes_bottom_to_top)
+        self.regularize_top_to_bottom(nodes_top_to_bottom)
+
+    def regularize_bottom_to_top(self, nodes: Iterable[Point]) -> None:
+        swept_edges = []
+
+        for i, node in enumerate(nodes):
+            inward_edges = self.inward_edges(node)
+            outward_edges = self.outward_edges(node)
+
+            insert_outward_edges_at = self.outward_edges_insertion_index_in_swept_edges(node, swept_edges, inward_edges)
+
+            if i != 0 and not inward_edges:
+                self.add_regularizing_inward_edge(node, swept_edges, insert_outward_edges_at)
+
+            self.delete_edges_from_swept_edges(inward_edges, swept_edges, delete_at=insert_outward_edges_at)
+            self.insert_edges_to_swept_edges(outward_edges, swept_edges, insert_at=insert_outward_edges_at)
+    
     def inward_edges(self, node: Point) -> list[OrientedPlanarStraightLineGraphEdge]:
         inward_edges = (edge for edge in self.edges_of(node) if edge.second == node)
         return sorted(inward_edges, key=lambda edge: Point.nonnegative_polar_angle(edge.other_node(node), node))
@@ -428,6 +465,99 @@ class OrientedPlanarStraightLineGraph(OrientedGraph):
     def outward_edges(self, node: Point) -> list[OrientedPlanarStraightLineGraphEdge]:
         outward_edges = (edge for edge in self.edges_of(node) if edge.first == node)
         return sorted(outward_edges, key=lambda edge: -Point.polar_angle(edge.other_node(node), node))
+
+    @classmethod
+    def outward_edges_insertion_index_in_swept_edges(cls, node: Point, swept_edges: list[OrientedPlanarStraightLineGraphEdge], inward_edges: list[OrientedPlanarStraightLineGraphEdge]) -> int:
+        try:
+            return swept_edges.index(inward_edges[0])
+        except (IndexError, ValueError):
+            return cls.outward_edges_insertion_index_in_swept_edges_by_current_node(node, swept_edges)
+
+    @classmethod
+    def outward_edges_insertion_index_in_swept_edges_by_current_node(cls, current_node: Point, swept_edges: list[PlanarStraightLineGraphEdge]) -> int:
+        for i, edge in enumerate(swept_edges):
+            turn = Turn(edge.first, edge.second, current_node)
+            if turn == Turn.LEFT or (turn == Turn.STRAIGHT and current_node < edge.first):
+                return i
+        
+        return len(swept_edges) # if there are no edges, insert at position 0
+
+    def add_regularizing_inward_edge(self, current_node: Point, swept_edges: list[OrientedPlanarStraightLineGraphEdge], outward_edges_insertion_index_in_swept_edges: int) -> None:
+        is_left_edge_missing = outward_edges_insertion_index_in_swept_edges != 0
+        is_right_edge_missing = outward_edges_insertion_index_in_swept_edges != len(swept_edges)
+
+        left_edge = swept_edges[outward_edges_insertion_index_in_swept_edges-1] if is_left_edge_missing else None
+        right_edge = swept_edges[outward_edges_insertion_index_in_swept_edges] if is_right_edge_missing else None
+
+        lower_node_vertically_closest_to_current = self.uppermost_lower_node(left_edge, right_edge)
+        self.add_edge(OrientedPlanarStraightLineGraphEdge(first=lower_node_vertically_closest_to_current, second=current_node))
+
+    @classmethod
+    def uppermost_lower_node(cls, left_edge: OrientedPlanarStraightLineGraphEdge = None, right_edge: OrientedPlanarStraightLineGraphEdge = None):
+        if left_edge is None:
+            return right_edge.first
+        if right_edge is None:
+            return left_edge.first
+        
+        return max(left_edge, right_edge, key=lambda edge: (edge.first.y, edge.first.x)).first
+    
+    @classmethod
+    def delete_edges_from_swept_edges(cls, edges: list[OrientedPlanarStraightLineGraphEdge], swept_edges: list[OrientedPlanarStraightLineGraphEdge], delete_at: int) -> None:
+        del swept_edges[delete_at : delete_at+len(edges)]
+
+    @classmethod
+    def insert_edges_to_swept_edges(cls, edges: list[OrientedPlanarStraightLineGraphEdge], swept_edges: list[OrientedPlanarStraightLineGraphEdge], insert_at: int) -> None:
+        swept_edges[insert_at : insert_at] = edges
+    
+    def regularize_top_to_bottom(self, nodes: Iterable[Point]) -> None:
+        swept_edges = []
+
+        for i, node in enumerate(nodes):
+            inward_edges = self.inward_edges(node)
+            outward_edges = self.outward_edges(node)
+
+            insert_inward_edges_at = self.inward_edges_insertion_index_in_swept_edges(node, swept_edges, outward_edges) # probably wrong, should be other index before deletion
+
+            if i != 0 and not outward_edges:
+                self.add_regularizing_outward_edge(node, swept_edges, insert_inward_edges_at)
+            
+            self.delete_edges_from_swept_edges(outward_edges, swept_edges, delete_at=insert_inward_edges_at)
+            self.insert_edges_to_swept_edges(inward_edges, swept_edges, insert_at=insert_inward_edges_at)
+    
+    @classmethod
+    def inward_edges_insertion_index_in_swept_edges(cls, node: Point, swept_edges: list[OrientedPlanarStraightLineGraphEdge], outward_edges: list[OrientedPlanarStraightLineGraphEdge]) -> int:
+        try:
+            return swept_edges.index(outward_edges[0])
+        except (IndexError, ValueError):
+            return cls.inward_edges_insertion_index_in_swept_edges_by_current_node(node, swept_edges)
+    
+    @classmethod
+    def inward_edges_insertion_index_in_swept_edges_by_current_node(cls, current_node: Point, swept_edges: list[PlanarStraightLineGraphEdge]) -> int:
+        for i, edge in enumerate(swept_edges):
+            turn = Turn(edge.first, edge.second, current_node)
+            if turn == Turn.LEFT or (turn == Turn.STRAIGHT and current_node < edge.first):
+                return i
+        
+        return len(swept_edges) # if there are no edges, insert at position 0
+    
+    def add_regularizing_outward_edge(self, current_node: Point, swept_edges: list[OrientedPlanarStraightLineGraphEdge], inward_edges_insertion_index_in_swept_edges: int) -> None:
+        is_left_edge_missing = inward_edges_insertion_index_in_swept_edges != 0
+        is_right_edge_missing = inward_edges_insertion_index_in_swept_edges != len(swept_edges)
+
+        left_edge = swept_edges[inward_edges_insertion_index_in_swept_edges-1] if is_left_edge_missing else None
+        right_edge = swept_edges[inward_edges_insertion_index_in_swept_edges] if is_right_edge_missing else None
+
+        upper_node_vertically_closest_to_current = self.lowermost_upper_node(left_edge, right_edge)
+        self.add_edge(OrientedPlanarStraightLineGraphEdge(first=current_node, second=upper_node_vertically_closest_to_current))
+    
+    @classmethod
+    def lowermost_upper_node(cls, left_edge: OrientedPlanarStraightLineGraphEdge = None, right_edge: OrientedPlanarStraightLineGraphEdge = None):
+        if left_edge is None:
+            return right_edge.second
+        if right_edge is None:
+            return left_edge.second
+        
+        return min(left_edge, right_edge, key=lambda edge: (edge.second.y, edge.second.x)).second
 
 
 class BinTreeNode(SerializablePydanticModelWithPydanticFields):
