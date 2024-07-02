@@ -347,7 +347,7 @@ class Graph(SerializablePydanticModelWithPydanticFields):
     def remove_node(self, node: object) -> None:
         self.nodes.remove(node)
 
-        for edge in self.edges:
+        for edge in self.edges.copy():
             if edge.first == node or edge.second == node:
                 self.remove_edge(edge)
     
