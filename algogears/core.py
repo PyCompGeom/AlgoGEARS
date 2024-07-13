@@ -290,6 +290,10 @@ class GraphEdge(SerializablePydanticModelWithPydanticFields):
     first: object
     second: object
     weight: float = 0
+    name: str | None = None
+
+    def __repr__(self) -> str:
+        return self.name if self.name else f"{str(self.first)}->{str(self.second)}"
 
     def __hash__(self) -> int:
         return hash((self.first, self.second)) + hash((self.second, self.first)) + hash(self.weight)
