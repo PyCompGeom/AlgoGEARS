@@ -405,10 +405,6 @@ class PlanarStraightLineGraph(Graph):
 class OrientedPlanarStraightLineGraphEdge(OrientedGraphEdge):
     first: Point
     second: Point
-    name: str | None = None
-
-    def __repr__(self) -> str:
-        return self.name
 
 
 class OrientedPlanarStraightLineGraph(OrientedGraph):
