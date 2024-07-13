@@ -897,6 +897,8 @@ def deserialize_threaded_bin_tree_root(root: ThreadedBinTreeNode) -> None:
 class PathDirection(str, Enum):
     left = "left"
     right = "right"
+    prev = "prev"
+    next = "next"
 
 
 class PointType(Enum):
