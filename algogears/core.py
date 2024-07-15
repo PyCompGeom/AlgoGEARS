@@ -410,11 +410,11 @@ class PlanarStraightLineGraph(Graph):
     edge_class: ClassVar[type] = PlanarStraightLineGraphEdge
 
     def inward_edges(self, node: Point) -> list[PlanarStraightLineGraphEdge]:
-        inward_edges = (edge for edge in self.edges_of(node) if max(edge.first, edge.second, key=lambda e: (e.y, e.x)) is node)
+        inward_edges = (edge for edge in self.edges_of(node) if edge.vertically_max_node is node)
         return sorted(inward_edges, key=lambda edge: Point.nonnegative_polar_angle(edge.other_node(node), node))
     
     def outward_edges(self, node: Point) -> list[PlanarStraightLineGraphEdge]:
-        outward_edges = (edge for edge in self.edges_of(node) if min(edge.first, edge.second, key=lambda e: (e.y, e.x)) is node)
+        outward_edges = (edge for edge in self.edges_of(node) if edge.vertically_min_node is node)
         return sorted(outward_edges, key=lambda edge: -Point.polar_angle(edge.other_node(node), node))
 
 
