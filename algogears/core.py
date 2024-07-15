@@ -394,6 +394,14 @@ class PlanarStraightLineGraphEdge(GraphEdge):
     first: Point
     second: Point
 
+    @property
+    def vertically_min_node(self) -> Point:
+        return min(self.first, self.second, key=lambda node: (node.y, node.x))
+    
+    @property
+    def vertically_max_node(self) -> Point:
+        return max(self.first, self.second, key=lambda node: (node.y, node.x))
+
 
 class PlanarStraightLineGraph(Graph):
     nodes: set[Point] = Field(default_factory=set)
