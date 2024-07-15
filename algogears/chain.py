@@ -23,19 +23,25 @@ class ChainsThreadedBinTreeNode(ThreadedBinTreeNode):
     def chain(self) -> None:
         del self.data
 
-    def turn(self, point: Point) -> Turn:
+    def search_direction(self, value: Point) -> PathDirection:
         for edge in self.chain:
-            if edge.first.y == point.y == edge.second.y:
-                    if point.x < edge.first.x:
-                        return Turn.LEFT
-                    if point.x > edge.second.x:
-                        return Turn.RIGHT
-                    
-                    return Turn.STRAIGHT
+            if edge.first.y == value.y == edge.second.y:
+                if value.x < edge.first.x:
+                    return PathDirection.left
+                if value.x > edge.second.x:
+                    return PathDirection.right
+                
+                return PathDirection.stop
             
-            if edge.first.y <= point.y <= edge.second.y:                
-                return Turn(edge.first, edge.second, point)
-    
+            if edge.first.y <= value.y <= edge.second.y:
+                turn = Turn(edge.first, edge.second, value)
+                if turn == Turn.LEFT:
+                    return PathDirection.left
+                if turn == Turn.RIGHT:
+                    return PathDirection.right
+                
+                return PathDirection.stop
+
 
 class ChainsThreadedBinTree(ThreadedBinTree):
     node_class: ClassVar[type] = ChainsThreadedBinTreeNode
@@ -76,8 +82,8 @@ def chain(planar_straight_line_graph: PlanarStraightLineGraph, point: Point):
     chain_bin_tree = ChainsThreadedBinTree.from_iterable(monotone_chains)
     yield chain_bin_tree
 
-    search_path, chains_target_point_is_between = search(point, chain_bin_tree, monotone_chains)
-    yield search_path, chains_target_point_is_between
+    search_path, (left_chain_node, right_chain_node) = chain_bin_tree.search_neighbors(point)
+    yield search_path, (left_chain_node.chain, right_chain_node.chain)
     
 
 def balance_bottom_to_top(oriented_planar_straight_line_graph: OrientedPlanarStraightLineGraph, nodes: Iterable[Point]) -> None:
@@ -127,42 +133,3 @@ def leftmost_available_outward_edge(node: Point, oriented_planar_straight_line_g
             return edge
     
     return None
-
-
-def search(point: Point, chain_bin_tree: ChainsThreadedBinTree, monotone_chains: list[list[OrientedPlanarStraightLineGraphEdge]]) -> tuple[list[ChainsThreadedBinTreeNode], tuple[OrientedPlanarStraightLineGraphEdge, OrientedPlanarStraightLineGraphEdge]]:
-    chain_node = chain_bin_tree.root
-    search_path = []
-    while not chain_node.is_leaf:
-        turn = chain_node.turn(point)
-        if turn == Turn.STRAIGHT:
-            return search_path, (chain_node.chain, chain_node.chain)
-        elif turn == Turn.LEFT:
-            if chain_node is monotone_chains[0]:
-                return search_path, (None, chain_node.chain)
-
-            # For floor-based chain trees, here we should go to prev node, not left
-            if chain_node.left is None:
-                break
-
-            search_path.append(PathDirection.left)
-            chain_node = chain_node.left
-        else:
-            if chain_node is monotone_chains[-1]:
-                return search_path, (chain_node.chain, None)
-
-            # For ceil-based chain trees, here we should go to next node, not right
-            if chain_node.right is None:
-                break
-
-            search_path.append(PathDirection.right)
-            chain_node = chain_node.right
-
-    turn = chain_node.turn(point)
-    if turn == Turn.LEFT:
-        search_path.append(PathDirection.prev)
-        return search_path, (chain_node.prev.chain, chain_node.chain)
-    if turn == Turn.RIGHT:
-        search_path.append(PathDirection.next)
-        return search_path, (chain_node.chain, chain_node.next.chain)
-    
-    return search_path, (chain_node.chain, chain_node.chain)
