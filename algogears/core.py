@@ -719,6 +719,14 @@ class BinTree(SerializablePydanticModelWithPydanticFields):
     def empty(cls) -> BinTree:
         return cls.from_iterable([])
 
+    @property
+    def leftmost_node(self) -> BinTreeNode:
+        return self.root.leftmost_node
+    
+    @property
+    def rightmost_node(self) -> BinTreeNode:
+        return self.root.rightmost_node
+
     def search(self, value: object) -> tuple[list[PathDirection], BinTreeNode]:
         search_path = []
         node = self.root
