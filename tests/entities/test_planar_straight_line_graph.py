@@ -50,6 +50,58 @@ def test_planar_straight_line_graph_add_edge_incorrect_type():
         planar_straight_line_graph.add_edge(42)
 
 
+def test_oriented_planar_straight_line_graph_node_inward_edges():
+    nodes = [
+        Point.new(3, 3),
+        Point.new(1, 3),
+        Point.new(2, 1),
+        Point.new(3, 1),
+        Point.new(5, 2),
+        Point.new(0, 4),
+        Point.new(3, 5),
+        Point.new(5, 5),
+        Point.new(5, 3),
+    ]
+    inward_edges = [
+        PlanarStraightLineGraphEdge(first=nodes[1], second=nodes[0]),
+        PlanarStraightLineGraphEdge(first=nodes[0], second=nodes[2]),
+        PlanarStraightLineGraphEdge(first=nodes[3], second=nodes[0]),
+        PlanarStraightLineGraphEdge(first=nodes[0], second=nodes[4]),
+    ]
+    outward_edges = [PlanarStraightLineGraphEdge(first=nodes[0], second=node) for node in nodes[5:]]
+    edges = inward_edges + outward_edges
+    planar_straight_line_graph = PlanarStraightLineGraph(nodes=nodes, edges=edges)    
+    target_node = nodes[0]
+
+    assert planar_straight_line_graph.inward_edges(target_node) == inward_edges
+
+
+def test_oriented_planar_straight_line_graph_node_outward_edges():
+    nodes = [
+        Point.new(3, 3),
+        Point.new(1, 3),
+        Point.new(2, 1),
+        Point.new(3, 1),
+        Point.new(5, 2),
+        Point.new(0, 4),
+        Point.new(3, 5),
+        Point.new(5, 5),
+        Point.new(5, 3),
+    ]
+    inward_edges = [PlanarStraightLineGraphEdge(first=node, second=nodes[0]) for node in nodes[1:5]]
+    outward_edges = [
+        PlanarStraightLineGraphEdge(first=nodes[0], second=nodes[5]),
+        PlanarStraightLineGraphEdge(first=nodes[6], second=nodes[0]),
+        PlanarStraightLineGraphEdge(first=nodes[0], second=nodes[7]),
+        PlanarStraightLineGraphEdge(first=nodes[8], second=nodes[0]),
+    ]
+    edges = inward_edges + outward_edges
+    planar_straight_line_graph = PlanarStraightLineGraph(nodes=nodes, edges=edges)
+    target_node = nodes[0]
+
+    assert planar_straight_line_graph.outward_edges(target_node) == outward_edges
+
+
 def test_graph_eq_edges_with_same_nodes_in_same_direction():
     graph1 = PlanarStraightLineGraph(nodes={Point.new(1, 1), Point.new(2, 2)}, edges={PlanarStraightLineGraphEdge(first=Point.new(1, 1), second=Point.new(2, 2), weight=1.5)})
     graph2 = PlanarStraightLineGraph(nodes={Point.new(1, 1), Point.new(2, 2)}, edges={PlanarStraightLineGraphEdge(first=Point.new(1, 1), second=Point.new(2, 2), weight=1.5)})
