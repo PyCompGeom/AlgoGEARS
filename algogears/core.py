@@ -907,6 +907,7 @@ class PathDirection(str, Enum):
     right = "right"
     prev = "prev"
     next = "next"
+    stop = "stop"
 
 
 class PointType(Enum):
