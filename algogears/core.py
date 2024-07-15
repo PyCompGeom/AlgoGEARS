@@ -509,7 +509,7 @@ class OrientedPlanarStraightLineGraph(OrientedGraph):
         self.add_edge(OrientedPlanarStraightLineGraphEdge(first=lower_node_vertically_closest_to_current, second=current_node))
 
     @classmethod
-    def uppermost_lower_node(cls, left_edge: OrientedPlanarStraightLineGraphEdge = None, right_edge: OrientedPlanarStraightLineGraphEdge = None):
+    def uppermost_lower_node(cls, left_edge: OrientedPlanarStraightLineGraphEdge | None = None, right_edge: OrientedPlanarStraightLineGraphEdge | None = None):
         if left_edge is None:
             return right_edge.first
         if right_edge is None:
@@ -567,7 +567,7 @@ class OrientedPlanarStraightLineGraph(OrientedGraph):
         self.add_edge(OrientedPlanarStraightLineGraphEdge(first=current_node, second=upper_node_vertically_closest_to_current))
     
     @classmethod
-    def lowermost_upper_node(cls, left_edge: OrientedPlanarStraightLineGraphEdge = None, right_edge: OrientedPlanarStraightLineGraphEdge = None):
+    def lowermost_upper_node(cls, left_edge: OrientedPlanarStraightLineGraphEdge | None = None, right_edge: OrientedPlanarStraightLineGraphEdge | None = None):
         if left_edge is None:
             return right_edge.second
         if right_edge is None:
