@@ -140,11 +140,19 @@ def search(point: Point, chain_bin_tree: ChainsThreadedBinTree, monotone_chains:
             if chain_node is monotone_chains[0]:
                 return search_path, (None, chain_node.chain)
 
+            # For floor-based chain trees, here we should go to prev node, not left
+            if chain_node.left is None:
+                break
+
             search_path.append(PathDirection.left)
             chain_node = chain_node.left
         else:
             if chain_node is monotone_chains[-1]:
                 return search_path, (chain_node.chain, None)
+
+            # For ceil-based chain trees, here we should go to next node, not right
+            if chain_node.right is None:
+                break
 
             search_path.append(PathDirection.right)
             chain_node = chain_node.right
