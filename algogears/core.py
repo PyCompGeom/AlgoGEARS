@@ -902,6 +902,37 @@ class ThreadedBinTree(AVLTree):
             nodes[-1].next = None
         
         return tree
+    
+    def search_neighbors(self, value: object) -> tuple[list[PathDirection], tuple[ThreadedBinTreeNode, ThreadedBinTreeNode]]:
+        search_path = []
+        node = self.root
+        leftmost_node = self.leftmost_node
+        rightmost_node = self.rightmost_node
+
+        while node:
+            search_direction = node.search_direction(value)
+            if search_direction == PathDirection.left:
+                if node is leftmost_node:
+                    return search_path, (None, node)
+                
+                if node.left is None:
+                    search_path.append(PathDirection.prev)
+                    return search_path, (node.prev, node)
+
+                search_path.append(search_direction)
+                node = node.left
+            elif search_direction == PathDirection.right:
+                if node is rightmost_node:
+                    return search_path, (node, None)
+                
+                if node.right is None:
+                    search_path.append(PathDirection.next)
+                    return search_path, (node, node.next)
+
+                search_path.append(search_direction)
+                node = node.right
+            else:
+                return search_path, (node, node)
 
 
 def serialize_threaded_bin_tree_or_its_root(root_or_tree: ThreadedBinTreeNode | ThreadedBinTree, *args, **kwargs) -> dict[str, Any]:
