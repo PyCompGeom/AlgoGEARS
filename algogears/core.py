@@ -606,6 +606,9 @@ class BinTreeNode(SerializablePydanticModelWithPydanticFields):
     def balance_factor(self) -> int:
         return (self.right.height if self.right else 0) - (self.left.height if self.left else 0)
 
+    def search_direction(self, value: object) -> PathDirection:
+        raise NotImplementedError
+
     @classmethod
     def copy_contents_without_children(cls, source: BinTreeNode, destination: BinTreeNode) -> None:
         if not isinstance(source, cls) or not isinstance(destination, cls):
@@ -715,6 +718,20 @@ class BinTree(SerializablePydanticModelWithPydanticFields):
     @classmethod
     def empty(cls) -> BinTree:
         return cls.from_iterable([])
+
+    def search(self, value: object) -> tuple[list[PathDirection], BinTreeNode]:
+        search_path = []
+        node = self.root
+
+        while node and (search_direction := node.search_direction(value)) != PathDirection.stop:
+            search_path.append(search_direction)
+
+            if search_direction == PathDirection.left:
+                node = node.left
+            else:
+                node = node.right
+        
+        return search_path, node
 
     def traverse_preorder(self) -> Iterable[BinTreeNode]:
         return self.root.traverse_preorder() if self.root else []
