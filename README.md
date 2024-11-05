@@ -9,8 +9,8 @@ This library is a continuation of PyCompGeomAlgorithms https://pypi.org/project/
 This library contains adapted implementations of computational geometry algorithms described in Franco P. Preparata and Michael I. Shamos' book "Computational Geometry: An Introduction". These algorithms are subdivided into three topics: geometric searching, constructing convex hulls, and proximity problems.
 #### Geometric searching
 * Point location
-  * *Slab method **(TBD)***: locate a point in a planar graph between its two edges.
-  * *Chain method **(TBD)***: locate a point in a planar graph between its two monotone chains connecting its lower-most and upper-most vertices.
+  * *Slab method*: locate a point in a planar graph between its two edges.
+  * *Chain method*: locate a point in a planar graph between its two monotone chains connecting its lower-most and upper-most vertices.
   * *Triangulation refinement method **(TBD)***: locate a point in a triangulated planar graph in one of the triangles.
 * Range-searching
   * *k-D tree method*: find out which or how many points of a given set lie in a specified range, using a multidimensional binary tree (here, 2-*D* tree).
