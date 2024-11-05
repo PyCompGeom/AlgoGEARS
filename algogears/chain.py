@@ -83,7 +83,7 @@ def chain(planar_straight_line_graph: PlanarStraightLineGraph, point: Point):
     yield chain_bin_tree
 
     search_path, (left_chain_node, right_chain_node) = chain_bin_tree.search_neighbors(point)
-    yield search_path, (left_chain_node.chain, right_chain_node.chain)
+    yield search_path, (left_chain_node.chain if left_chain_node else None, right_chain_node.chain if right_chain_node else None)
     
 
 def balance_bottom_to_top(oriented_planar_straight_line_graph: OrientedPlanarStraightLineGraph, nodes: Iterable[Point]) -> None:
