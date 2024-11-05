@@ -496,20 +496,6 @@ class PlanarStraightLineGraphPlaneSweep(PlaneSweep):
     @swept_edges.deleter
     def swept_edges(self) -> None:
         del self.swept_objects
-
-    def edges_insertion_index_in_swept_edges(self, edges: list[PlanarStraightLineGraphEdge], point: Point) -> int:
-        try:
-            return self.swept_edges.index(edges[0])
-        except (IndexError, ValueError):
-            return self.edges_insertion_index_in_swept_edges_by_point(point)
-    
-    def edges_insertion_index_in_swept_edges_by_point(self, point: Point) -> int:
-        for i, edge in enumerate(self.swept_edges):
-            turn = Turn(edge.vertically_min_node, edge.vertically_max_node, point)
-            if turn == Turn.LEFT or (turn == Turn.STRAIGHT and point < edge.vertically_min_node):
-                return i
-        
-        return len(self.swept_edges)
     
     def delete_edges_from_swept_edges(self, edges: list[PlanarStraightLineGraphEdge], delete_at: int) -> None:
         del self.swept_edges[delete_at : delete_at+len(edges)]
@@ -573,6 +559,20 @@ class OrientedPlanarStraightLineGraphRegularizationPlaneSweep(PlanarStraightLine
             self.delete_edges_from_swept_edges(outward_edges, delete_at=insert_inward_edges_at)
             self.insert_edges_to_swept_edges(inward_edges, insert_at=insert_inward_edges_at)
     
+    def edges_insertion_index_in_swept_edges(self, edges: list[PlanarStraightLineGraphEdge], point: Point) -> int:
+        try:
+            return self.swept_edges.index(edges[0])
+        except (IndexError, ValueError):
+            return self.edges_insertion_index_in_swept_edges_by_point(point)
+    
+    def edges_insertion_index_in_swept_edges_by_point(self, point: Point) -> int:
+        for i, edge in enumerate(self.swept_edges):
+            turn = Turn(edge.vertically_min_node, edge.vertically_max_node, point)
+            if turn == Turn.LEFT:
+                return i
+        
+        return len(self.swept_edges)
+
     def add_regularizing_outward_edge(self, current_node: Point, inward_edges_insertion_index_in_swept_edges: int) -> None:
         is_left_edge_present = inward_edges_insertion_index_in_swept_edges != 0
         is_right_edge_present = inward_edges_insertion_index_in_swept_edges != len(self.swept_edges)
