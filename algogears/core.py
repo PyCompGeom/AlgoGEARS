@@ -950,6 +950,8 @@ class ThreadedBinTree(AVLTree):
                 node = node.right
             else:
                 return search_path, (node, node)
+        
+        return (None, None)
 
 
 def serialize_threaded_bin_tree_or_its_root(root_or_tree: ThreadedBinTreeNode | ThreadedBinTree, *args, **kwargs) -> dict[str, Any]:
